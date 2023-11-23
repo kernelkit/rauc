@@ -9,6 +9,7 @@
 #include <locale.h>
 #include <stdio.h>
 #include <string.h>
+#include <syslog.h>
 #include <sys/ioctl.h>
 #include <unistd.h>
 
@@ -1961,6 +1962,38 @@ static gboolean unknown_start(int argc, char **argv)
 	return TRUE;
 }
 
+static int log_level(GLogLevelFlags level)
+{
+	if (level & G_LOG_FLAG_FATAL)
+		return LOG_EMERG;
+	if (level & G_LOG_FLAG_RECURSION)
+		return LOG_ALERT;
+	if (level & G_LOG_LEVEL_CRITICAL)
+		return LOG_CRIT;
+	if (level & G_LOG_LEVEL_ERROR)
+		return LOG_ERR;
+	if (level & G_LOG_LEVEL_WARNING)
+		return LOG_WARNING;
+	if (level & G_LOG_LEVEL_MESSAGE)
+		return LOG_NOTICE;
+	if (level & G_LOG_LEVEL_INFO)
+		return LOG_INFO;
+	if (level & G_LOG_LEVEL_DEBUG)
+		return LOG_DEBUG;
+
+	/* Fallback to INFO for unknown levels */
+	return LOG_INFO;
+}
+
+static void syslog_handler(const gchar *domain, GLogLevelFlags level, const gchar *message, gpointer arg)
+{
+	/* unused */
+	(void)domain;
+	(void)arg;
+
+	syslog(log_level(level), "%s", message);
+}
+
 typedef enum  {
 	UNKNOWN = 0,
 	INSTALL,
@@ -2142,7 +2175,7 @@ static void create_option_groups(void)
 
 static void cmdline_handler(int argc, char **argv)
 {
-	gboolean help = FALSE, debug = FALSE, version = FALSE;
+	gboolean help = FALSE, debug = FALSE, use_syslog = FALSE, version = FALSE;
 	gchar *confpath = NULL, *keyring = NULL, **intermediate = NULL, *mount = NULL;
 	char *cmdarg = NULL;
 	g_autoptr(GOptionContext) context = NULL;
@@ -2155,6 +2188,7 @@ static void cmdline_handler(int argc, char **argv)
 		{"intermediate", '\0', 0, G_OPTION_ARG_FILENAME_ARRAY, &intermediate, "intermediate CA file name", "PEMFILE"},
 		{"mount", '\0', 0, G_OPTION_ARG_FILENAME, &mount, "mount prefix", "PATH"},
 		{"debug", 'd', 0, G_OPTION_ARG_NONE, &debug, "enable debug output", NULL},
+		{"syslog", 's', 0, G_OPTION_ARG_NONE, &use_syslog, "use syslog instead of stdout", NULL},
 		{"version", '\0', 0, G_OPTION_ARG_NONE, &version, "display version", NULL},
 		{"help", 'h', 0, G_OPTION_ARG_NONE, &help, NULL, NULL},
 		{0}
@@ -2267,6 +2301,15 @@ static void cmdline_handler(int argc, char **argv)
 		}
 		domains = g_getenv("G_MESSAGES_DEBUG");
 		g_message("Debug log domains: '%s'", domains);
+	}
+
+	if (use_syslog) {
+		GLogLevelFlags levels = G_LOG_LEVEL_MASK | G_LOG_FLAG_FATAL | G_LOG_FLAG_RECURSION;
+		const char *ident = "rauc";
+
+		/* XXX: facility should be configurable */
+		openlog(ident, LOG_PID | LOG_NOWAIT, LOG_LOCAL0);
+		g_log_set_handler(ident, levels, syslog_handler, NULL);
 	}
 
 	/* get first parameter without dashes */
