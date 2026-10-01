@@ -1,7 +1,13 @@
+#include <errno.h>
 #include <gio/gio.h>
 #include <glib-unix.h>
 #include <glib.h>
+#include <stddef.h>
 #include <stdio.h>
+#include <string.h>
+#include <sys/socket.h>
+#include <sys/un.h>
+#include <unistd.h>
 
 #include "artifacts.h"
 #include "bundle.h"
@@ -602,11 +608,40 @@ static void r_on_bus_acquired(GDBusConnection *connection,
 	return;
 }
 
+static void r_notify_ready(void)
+{
+	struct sockaddr_un sa = { .sun_family = AF_UNIX };
+	const gchar *path = g_getenv("NOTIFY_SOCKET");
+	gsize len;
+	int sd;
+
+	if (!path || !*path)
+		return;
+
+	len = strlen(path);
+	if (len >= sizeof(sa.sun_path))
+		return;
+
+	memcpy(sa.sun_path, path, len);
+	if (sa.sun_path[0] == '@')
+		sa.sun_path[0] = '\0';
+
+	sd = socket(AF_UNIX, SOCK_DGRAM | SOCK_CLOEXEC, 0);
+	if (sd < 0)
+		return;
+
+	if (sendto(sd, "READY=1\n", 8, MSG_NOSIGNAL, (struct sockaddr *)&sa,
+		   offsetof(struct sockaddr_un, sun_path) + len) < 0)
+		g_debug("failed to notify readiness: %s", g_strerror(errno));
+	close(sd);
+}
+
 static void r_on_name_acquired(GDBusConnection *connection,
 		const gchar     *name,
 		gpointer user_data)
 {
 	g_debug("name '%s' acquired", name);
+	r_notify_ready();
 
 	if (r_context()->config->autoinstall_path)
 		auto_install(r_context()->config->autoinstall_path);
