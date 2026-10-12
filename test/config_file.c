@@ -50,6 +50,7 @@ bootloader=barebox\n\
 mountprefix=/mnt/myrauc/\n\
 statusfile=/mnt/persistent-rw-fs/system.raucs\n\
 max-bundle-download-size=42\n\
+download-directory=/data/tmp\n\
 bundle-formats=verity\n\
 \n\
 [keyring]\n\
@@ -118,6 +119,7 @@ type=trees\n\
 	g_assert_true(config->activate_installed);
 	g_assert_cmpstr(config->statusfile_path, ==, "/mnt/persistent-rw-fs/system.raucs");
 	g_assert_cmpint(config->max_bundle_download_size, ==, 42);
+	g_assert_cmpstr(config->download_directory, ==, "/data/tmp");
 	g_assert_cmphex(config->bundle_formats_mask, ==, 0x2);
 	g_assert_cmpstr(config->store_path, ==, "/var/lib/default.castr/");
 	g_assert_cmpstr(config->tmp_path, ==, "/tmp/");

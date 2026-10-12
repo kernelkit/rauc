@@ -212,6 +212,16 @@ Example configuration:
   If RAUC is configured with streaming support, this has no effect, as the
   bundle is not downloaded as a whole.
 
+``download-directory`` (optional)
+  Directory in which RAUC creates a temporary subdirectory to store
+  downloaded bundles.
+  Defaults to the system's temporary directory (``$TMPDIR`` or ``/tmp``).
+  Use this if the default location is too small to hold a full bundle
+  (see ``max-bundle-download-size``).
+  The directory must already exist.
+  If RAUC is configured with streaming support, this has no effect, as the
+  bundle is not downloaded as a whole.
+
 ``variant-name`` (optional)
   String to be used as variant name for this board.
   If set, neither ``variant-file`` nor ``variant-dtb`` must be set.

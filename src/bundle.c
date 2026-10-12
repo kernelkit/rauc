@@ -2249,11 +2249,25 @@ gboolean check_bundle(const gchar *bundlename, RaucBundle **bundle, CheckBundleP
 			goto out;
 		}
 #elif ENABLE_NETWORK
-		g_autofree gchar *tmpdir = g_dir_make_tmp("rauc-XXXXXX", &ierror);
-		if (tmpdir == NULL) {
-			g_propagate_prefixed_error(error, ierror, "Failed to create tmp dir: ");
-			res = FALSE;
-			goto out;
+		g_autofree gchar *tmpdir = NULL;
+
+		if (r_context()->config->download_directory) {
+			tmpdir = g_build_filename(r_context()->config->download_directory, "rauc-XXXXXX", NULL);
+			if (g_mkdtemp(tmpdir) == NULL) {
+				int err = errno;
+				g_set_error(error, G_FILE_ERROR, g_file_error_from_errno(err),
+						"Failed to create tmp dir in %s: %s",
+						r_context()->config->download_directory, g_strerror(err));
+				res = FALSE;
+				goto out;
+			}
+		} else {
+			tmpdir = g_dir_make_tmp("rauc-XXXXXX", &ierror);
+			if (tmpdir == NULL) {
+				g_propagate_prefixed_error(error, ierror, "Failed to create tmp dir: ");
+				res = FALSE;
+				goto out;
+			}
 		}
 
 		ibundle->origpath = g_strdup(bundlename);

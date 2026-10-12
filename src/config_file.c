@@ -903,6 +903,9 @@ gboolean load_config(const gchar *filename, RaucConfig **config, GError **error)
 	}
 	g_key_file_remove_key(key_file, "system", "max-bundle-download-size", NULL);
 
+	c->download_directory = resolve_path_take(filename,
+			key_file_consume_string(key_file, "system", "download-directory", NULL));
+
 	c->mount_prefix = key_file_consume_string(key_file, "system", "mountprefix", NULL);
 	if (!c->mount_prefix) {
 		g_debug("No mount prefix provided, using /mnt/rauc/ as default");
@@ -1274,6 +1277,7 @@ void free_config(RaucConfig *config)
 	g_free(config->system_bootloader);
 	g_free(config->system_bb_statename);
 	g_free(config->system_bb_dtbpath);
+	g_free(config->download_directory);
 	g_free(config->mount_prefix);
 	g_free(config->store_path);
 	g_free(config->tmp_path);

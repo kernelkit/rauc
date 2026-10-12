@@ -51,6 +51,8 @@ typedef struct {
 	gboolean efi_use_bootnext;
 	/* maximum filesize to download in bytes */
 	guint64 max_bundle_download_size;
+	/* directory in which to place downloaded bundles (NULL: use default tmp dir) */
+	gchar *download_directory;
 	/* path prefix where rauc may create mount directories */
 	gchar *mount_prefix;
 	gchar *store_path;
